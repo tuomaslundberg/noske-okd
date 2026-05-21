@@ -1,0 +1,27 @@
+# ConfigMap — manatee registry file for the placeholder corpus
+#
+# A ConfigMap stores key-value configuration data as a K8s object. It can be
+# mounted into a pod as a directory: each key becomes a filename, its value
+# the file content. Here, the key "test" mounts as the file
+# /var/lib/manatee/registry/test — exactly what manatee's `compilecorp` and
+# runtime query tools expect when looking up a corpus named "test".
+#
+# Manatee registry fields used here:
+#   NAME     — human-readable label
+#   ENCODING — character encoding of the vertical file
+#   PATH     — directory where compiled corpus data lives (on the PVC)
+#   VERTICAL — path to the source vertical file (consumed during compilation)
+#   ATTRIBUTE word — one positional attribute per token; "word" is the minimum
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noske-registry
+  namespace: turkunlp-noske-dev
+data:
+  test: |
+    NAME "Test Corpus"
+    ENCODING "utf-8"
+    PATH "/var/lib/manatee/data/test"
+    VERTICAL "/var/lib/manatee/data/test/vert"
+    ATTRIBUTE word

@@ -1,0 +1,2 @@
+# Secret manifest — contains LUMI-O credentials; never commit
+manifests/00-secret.yaml

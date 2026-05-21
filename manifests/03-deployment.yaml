@@ -1,0 +1,127 @@
+# Deployment — NSE pod spec with init container for corpus creation
+#
+# A Deployment declares desired state for a set of identical pods. The
+# controller reconciles actual state toward it: if a pod dies, a replacement
+# is scheduled. replicas: 1 is intentional for a stateful corpus server —
+# multiple replicas reading from one PVC is fine; multiple writing is not.
+#
+# Init containers run to completion in order before the main container starts.
+# Kubernetes restarts the pod (and re-runs init containers) on failure, so
+# the corpus-init container checks whether the corpus is already compiled to
+# avoid recompiling on every restart.
+#
+# securityContext: OKD enforces arbitrary UIDs — it overrides runAsUser at
+# runtime to a random UID from the namespace's allowed range. Setting
+# runAsNonRoot: true here signals the intent and causes OKD to reject an image
+# that would run as root. The patched image (Dockerfile.okd) already handles
+# arbitrary UIDs via chown 0:0 + chmod g=u on all writable dirs.
+#
+# Resource requests/limits: requests are what the scheduler uses to place the
+# pod on a node; limits are enforced hard caps. NSE can be memory-hungry under
+# real load — 8 GiB limit is the safe ceiling within the LimitRange max of
+# 16 GiB. Adjust for production.
+#
+# BROWSER_URL_BONITO: OKD auto-names Routes as
+# <route-name>-<namespace>.apps.<cluster-domain>. Based on the cluster API at
+# api.v1.lumi-k.eu and the confirmed apps domain *.apps.lumi-k.eu, the Route
+# "noske" in namespace "turkunlp-noske-dev" should resolve to the URL below.
+# Verify with: oc get route noske -n turkunlp-noske-dev -o jsonpath='{.spec.host}'
+# Update this value if it differs before applying the manifest.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noske
+  namespace: turkunlp-noske-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: noske
+  template:
+    metadata:
+      labels:
+        app: noske
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      initContainers:
+        - name: corpus-init
+          image: ghcr.io/tuomaslundberg/noske-okd:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              # Skip if already compiled (PVC persists across restarts)
+              if [ -d /var/lib/manatee/data/test ] && \
+                 [ -n "$(ls -A /var/lib/manatee/data/test 2>/dev/null)" ]; then
+                echo "Corpus 'test' already compiled, skipping."
+                exit 0
+              fi
+              mkdir -p /var/lib/manatee/data/test
+              printf '<doc id="1">\n<s>\nhello\nworld\n.\n</s>\n</doc>\n' \
+                > /var/lib/manatee/data/test/vert
+              compilecorp --no-ske test
+              echo "Corpus 'test' compiled successfully."
+          volumeMounts:
+            - name: corpus-data
+              mountPath: /var/lib/manatee/data
+            - name: registry-config
+              mountPath: /var/lib/manatee/registry
+
+      containers:
+        - name: noske
+          image: ghcr.io/tuomaslundberg/noske-okd:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CORPLIST
+              value: "test"
+            # VERIFY: check actual route hostname with:
+            #   oc get route noske -n turkunlp-noske-dev -o jsonpath='{.spec.host}'
+            - name: BROWSER_URL_BONITO
+              value: "https://noske-turkunlp-noske-dev.apps.lumi-k.eu"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "512Mi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+          volumeMounts:
+            - name: corpus-data
+              mountPath: /var/lib/manatee/data
+            - name: registry-config
+              mountPath: /var/lib/manatee/registry
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+      volumes:
+        - name: corpus-data
+          persistentVolumeClaim:
+            claimName: noske-corpus
+        - name: registry-config
+          configMap:
+            name: noske-registry

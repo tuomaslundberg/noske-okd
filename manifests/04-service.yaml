@@ -1,0 +1,19 @@
+# Service — stable cluster-internal endpoint for the NSE pod
+#
+# Pods are ephemeral: they get new IPs when rescheduled. A Service provides a
+# stable virtual IP (ClusterIP) that load-balances to any pod matching the
+# selector. Here it's a 1:1 mapping to the single NSE pod on port 8080.
+# The Route in the next manifest targets this Service, not the pod directly.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: noske
+  namespace: turkunlp-noske-dev
+spec:
+  selector:
+    app: noske
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

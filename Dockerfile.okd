@@ -1,0 +1,56 @@
+FROM ghcr.io/acdh-oeaw/noske-ubi9/noske:5.71.15-2.225.8-2-open
+
+# ── OKD non-root patch ───────────────────────────────────────────────────────
+# OKD enforces arbitrary UID / no-root: the container runs as a randomly
+# assigned UID (e.g. 1000620000) that is not in /etc/passwd.  The primary GID
+# is always 0 (root group).  The upstream image chowns runtime-writable dirs
+# to www-data:www-data without group-write, so they are inaccessible to the
+# arbitrary UID.
+#
+# Fix:
+#   1. Reassign ownership of every runtime-writable path to 0:0 (root group =
+#      GID 0, which OKD always assigns as the effective group).
+#   2. chmod g=u — give the group the same permissions as the owner, so the
+#      arbitrary UID (GID=0) can read/write wherever the owner could.
+#   3. chmod g=u /etc/passwd — lets the entrypoint register the arbitrary UID
+#      for NSS lookups (processes calling getpwuid() need a passwd entry).
+#
+# Paths covered:
+#   /tmp/lighttpd                          — PID file + upload staging
+#   /var/lib/bonito                        — jobs/, cache/, subcorp/, options/
+#   /var/cache/lighttpd                    — compress/ cache
+#   /var/log/lighttpd                      — cronolog access log target
+#   /var/www/crystal                       — UI assets (populated at startup)
+#   /var/lib/manatee/data                  — corpus index data (PVC mount point)
+#   /usr/lib/python3.9/dist-packages/bonito — bonito Python package (startup copy)
+#   /home/user                             — WORKDIR
+# ─────────────────────────────────────────────────────────────────────────────
+USER root
+
+RUN mkdir -p /home/user /var/log/lighttpd && \
+    chown -R 0:0 \
+        /tmp/lighttpd \
+        /var/lib/bonito \
+        /var/cache/lighttpd \
+        /var/log/lighttpd \
+        /var/www/crystal \
+        /var/lib/manatee/data \
+        /usr/lib/python3.9/dist-packages/bonito \
+        /home/user && \
+    chmod -R g=u \
+        /tmp/lighttpd \
+        /var/lib/bonito \
+        /var/cache/lighttpd \
+        /var/log/lighttpd \
+        /var/www/crystal \
+        /var/lib/manatee/data \
+        /usr/lib/python3.9/dist-packages/bonito \
+        /home/user && \
+    chmod g=u /etc/passwd
+
+COPY run_lighttpd.sh /run_lighttpd.sh
+RUN chmod +x /run_lighttpd.sh && chmod g=u /run_lighttpd.sh
+
+# Signal non-root intent to OKD. OKD will override with its assigned UID at
+# runtime; the numeric UID here just prevents "runs as root" admission warnings.
+USER 1001

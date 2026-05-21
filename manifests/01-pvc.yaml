@@ -1,0 +1,23 @@
+# PersistentVolumeClaim — corpus data storage
+#
+# A PVC is a request for storage. The cluster fulfils it by binding it to a
+# PersistentVolume (PV) — a chunk of real storage provisioned by the storage
+# class. Here we use rook-ceph-fs (CephFS), the only RWX class on LUMI-K.
+# ReadWriteMany lets multiple pods mount the same volume simultaneously; useful
+# if we ever scale to >1 replica, and required by OKD's rolling update strategy.
+#
+# LimitRange cap on LUMI-K: 100 GiB per PVC. 10 GiB is enough for dev/smoke
+# testing; bump for production corpora.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: noske-corpus
+  namespace: turkunlp-noske-dev
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: rook-ceph-fs
+  resources:
+    requests:
+      storage: 10Gi

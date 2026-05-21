@@ -1,0 +1,34 @@
+# Route — OKD-native ingress with automatic TLS
+#
+# Routes are OpenShift/OKD's built-in alternative to plain K8s Ingress objects.
+# They expose a Service externally via the cluster's HAProxy router.
+#
+# TLS termination modes:
+#   edge     — TLS terminates at the router; traffic to the pod is plain HTTP.
+#              The router holds the certificate (auto-issued from the cluster CA
+#              for *.apps.lumi-k.eu). This is the right choice when the app
+#              itself (lighttpd on 8080) speaks plain HTTP.
+#   passthrough — TLS goes all the way to the pod; app must handle it. Not used here.
+#   reencrypt   — edge + re-encrypt pod-side. Overkill for internal cluster traffic.
+#
+# insecureEdgeTerminationPolicy: Redirect — HTTP → HTTPS redirect at the router.
+#
+# host: omitted intentionally. OKD auto-assigns:
+#   <route-name>-<namespace>.apps.<cluster-domain>
+#   → noske-turkunlp-noske-dev.apps.lumi-k.eu
+# Setting host explicitly would override this; omitting is cleaner for dev.
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: noske
+  namespace: turkunlp-noske-dev
+spec:
+  to:
+    kind: Service
+    name: noske
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
