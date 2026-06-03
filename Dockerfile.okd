@@ -27,6 +27,13 @@ FROM ghcr.io/acdh-oeaw/noske-ubi9/noske:5.71.15-2.225.8-2-open
 # ─────────────────────────────────────────────────────────────────────────────
 USER root
 
+# Install rclone — used by the init container to download pre-compiled corpora
+# from LUMI-O (S3-compatible object storage) at pod startup.
+RUN curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.rpm \
+        -o /tmp/rclone.rpm && \
+    rpm -i /tmp/rclone.rpm && \
+    rm /tmp/rclone.rpm
+
 RUN mkdir -p /home/user /var/log/lighttpd && \
     chown -R 0:0 \
         /tmp/lighttpd \

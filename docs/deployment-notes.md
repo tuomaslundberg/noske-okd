@@ -57,14 +57,50 @@ Deploying **NoSketchEngine** (a corpus query web interface) on **LUMI-K** as a *
 
 ---
 
+## Session 3 progress (2026-05-22) — code complete; pending execution
+
+**All code written; awaiting Track A (LUMI-O bucket setup) before applying.**
+
+**New files:**
+- `scripts/to_vert.py` — converts HPLT v3 JSONL to manatee vertical (whitespace tokenization; doc metadata: id, lang, url)
+- `scripts/compile_and_upload.sh` — end-to-end wrapper: generate vert → Apptainer compilecorp → rclone upload
+- `registry/hplt_toy` — manatee registry source of truth (mirrored into ConfigMap)
+- `manifests/00-secret.yaml` — K8s Secret template for LUMI-O credentials (gitignored; fill before applying)
+
+**Modified files:**
+- `Dockerfile.okd` — added rclone RPM install (needed in init container)
+- `manifests/02-configmap.yaml` — replaced "test" registry with hplt_toy
+- `manifests/03-deployment.yaml` — init container now downloads pre-compiled corpus from LUMI-O via rclone; Secret env injection; CORPLIST → "hplt_toy"
+
+**HPLT v3 JSONL format note:** Each JSONL line is a shard record `{filename, documents: [...]}`. Doc fields are abbreviated: `u`=URL, `lang`=list (primary first), `id`=doc ID, `text`=body. First shard has 1198 docs.
+
+**Image rebuild required before applying manifests:**
+```bash
+docker build --platform linux/amd64 -t ghcr.io/tuomaslundberg/noske-okd:latest -f Dockerfile.okd .
+docker push ghcr.io/tuomaslundberg/noske-okd:latest
+```
+
+---
+
 ## Next session plan — corpus loading
 
 Three interlocking pieces; bucket creation unblocks the other two.
 
 ### A. LUMI-O bucket (prerequisite for everything)
-- Enable LUMI-O at my.csc.fi if not already active (first-time setup)
-- Create a bucket (e.g. `turkunlp-noske-corpora`)
-- Configure rclone on LUMI-C with LUMI-O credentials
+1. On LUMI-C, configure rclone (keys already generated — have access-key-id and secret-access-key ready from `00-secret.yaml`):
+   ```bash
+   module load lumio
+   lumio-conf   # follow prompts; paste project number + keys when asked
+   ```
+   This writes `~/.config/rclone/rclone.conf` with remote `lumi-462000999-private`.
+2. Create the bucket from LUMI-C:
+   ```bash
+   rclone mkdir lumi-462000999-private:turkunlp-noske-corpora
+   ```
+3. Verify:
+   ```bash
+   rclone lsd lumi-462000999-private:
+   ```
 - **Start here.**
 
 ### B. OKD side (can proceed once bucket + credentials exist)

@@ -1,2 +1,7 @@
 # Secret manifest — contains LUMI-O credentials; never commit
 manifests/00-secret.yaml
+
+# Generated artifacts — not source
+compiled/
+vert/
+noske-okd.sif

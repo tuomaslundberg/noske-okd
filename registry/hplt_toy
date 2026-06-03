@@ -1,0 +1,10 @@
+NAME "HPLT Toy"
+ENCODING "UTF-8"
+PATH "/var/lib/manatee/data/hplt_toy"
+ATTRIBUTE word
+STRUCTURE doc {
+    ATTRIBUTE id
+    ATTRIBUTE lang
+    ATTRIBUTE url
+}
+STRUCTURE s

@@ -1,4 +1,4 @@
-# Deployment — NSE pod spec with init container for corpus creation
+# Deployment — NSE pod spec with init container for corpus download
 #
 # A Deployment declares desired state for a set of identical pods. The
 # controller reconciles actual state toward it: if a pod dies, a replacement
@@ -7,8 +7,14 @@
 #
 # Init containers run to completion in order before the main container starts.
 # Kubernetes restarts the pod (and re-runs init containers) on failure, so
-# the corpus-init container checks whether the corpus is already compiled to
-# avoid recompiling on every restart.
+# the corpus-init container checks whether the corpus is already present on the
+# PVC to avoid re-downloading on every restart.
+#
+# Corpus loading strategy (Session 3+):
+#   Corpora are pre-compiled on LUMI-C (via Apptainer + compilecorp) and
+#   uploaded to LUMI-O object storage. The init container downloads the
+#   compiled corpus at pod startup using rclone (S3-compatible). Credentials
+#   are injected from the lumi-o-credentials Secret (00-secret.yaml).
 #
 # securityContext: OKD enforces arbitrary UIDs — it overrides runAsUser at
 # runtime to a random UID from the namespace's allowed range. Setting
@@ -55,22 +61,39 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          env:
+            # rclone picks up S3 credentials from these env vars automatically
+            # when using the :s3: connection string syntax (no config file needed).
+            - name: RCLONE_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: lumi-o-credentials
+                  key: access-key-id
+            - name: RCLONE_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lumi-o-credentials
+                  key: secret-access-key
           command:
             - /bin/sh
             - -c
             - |
               set -e
-              # Skip if already compiled (PVC persists across restarts)
-              if [ -d /var/lib/manatee/data/test ] && \
-                 [ -n "$(ls -A /var/lib/manatee/data/test 2>/dev/null)" ]; then
-                echo "Corpus 'test' already compiled, skipping."
+              # Skip if corpus already present on PVC (persists across restarts)
+              if [ -d /var/lib/manatee/data/hplt_toy ] && \
+                 [ -n "$(ls -A /var/lib/manatee/data/hplt_toy 2>/dev/null)" ]; then
+                echo "Corpus 'hplt_toy' already present on PVC, skipping download."
                 exit 0
               fi
-              mkdir -p /var/lib/manatee/data/test
-              printf '<doc id="1">\n<s>\nhello\nworld\n.\n</s>\n</doc>\n' \
-                > /var/lib/manatee/data/test/vert
-              compilecorp --no-ske test
-              echo "Corpus 'test' compiled successfully."
+              mkdir -p /var/lib/manatee/data/hplt_toy
+              echo "Downloading corpus 'hplt_toy' from LUMI-O..."
+              rclone copy \
+                --s3-provider Ceph \
+                --s3-endpoint https://lumidata.eu \
+                :s3:turkunlp-noske-corpora/hplt_toy/ \
+                /var/lib/manatee/data/hplt_toy/ \
+                --progress
+              echo "Corpus 'hplt_toy' downloaded successfully."
           volumeMounts:
             - name: corpus-data
               mountPath: /var/lib/manatee/data
@@ -88,7 +111,7 @@ spec:
             - containerPort: 8080
           env:
             - name: CORPLIST
-              value: "test"
+              value: "hplt_toy"
             # VERIFY: check actual route hostname with:
             #   oc get route noske -n turkunlp-noske-dev -o jsonpath='{.spec.host}'
             - name: BROWSER_URL_BONITO
