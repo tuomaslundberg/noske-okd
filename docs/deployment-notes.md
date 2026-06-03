@@ -88,9 +88,9 @@ docker push ghcr.io/tuomaslundberg/noske-okd:latest
 
 ---
 
-## Sprint: Prod preparation (pre-vacation)
+## Sprint: Production deployment (pre-vacation)
 
-**Goal:** Get prod namespace live with `hplt_toy` — same corpus as dev, full smoke test. Corpus decisions happen after vacation; this sprint proves the prod path works cleanly before that meeting.
+**Goal:** Get prod namespace live with `hplt_toy` as a placeholder corpus — full smoke test of the production infrastructure. Corpus decisions happen after vacation; this sprint validates the prod path before that meeting.
 
 **Prerequisites — all met:**
 - ✅ New LUMI project `462001491` allocated (lifetime to 2027-05-28)
@@ -107,9 +107,9 @@ docker push ghcr.io/tuomaslundberg/noske-okd:latest
 
 ---
 
-## Sprint: Prod deployment with real corpora (post-vacation)
+## Sprint: Go live — load real corpora (post-vacation)
 
-**Gate:** Corpus selection meeting with Erik and Veronika.
+**Gate:** Corpus selection meeting with Erik and Veronika. Prod namespace is already running with `hplt_toy`; this sprint is a data operation on the live instance, not a new deployment.
 
 ### Steps per corpus
 1. `scripts/compile_and_upload.sh` — generates vertical, compiles via Singularity, uploads to LUMI-O
