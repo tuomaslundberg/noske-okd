@@ -1,0 +1,127 @@
+# Deployment — production NSE pod spec
+#
+# BEFORE APPLYING:
+#   1. Replace every occurrence of PROD_NAMESPACE in this file
+#   2. Create manifests/prod/00-secret.yaml with LUMI-O credentials (gitignored)
+#   3. Confirm BROWSER_URL_BONITO matches the actual route hostname:
+#        oc get route noske -n PROD_NAMESPACE -o jsonpath='{.spec.host}'
+#   4. Update CORPLIST (both containers) and ConfigMap after corpus decisions
+#
+# Differences from dev:
+#   - Namespace: PROD_NAMESPACE
+#   - Init container loops over CORPLIST — handles multiple corpora cleanly
+#   - Memory request/limit raised for production load
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noske
+  namespace: PROD_NAMESPACE
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: noske
+  template:
+    metadata:
+      labels:
+        app: noske
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      initContainers:
+        - name: corpus-init
+          image: ghcr.io/tuomaslundberg/noske-okd:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: CORPLIST
+              value: "hplt_toy"
+            - name: RCLONE_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: lumi-o-credentials
+                  key: access-key-id
+            - name: RCLONE_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lumi-o-credentials
+                  key: secret-access-key
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              for CORPUS in $CORPLIST; do
+                if [ -d /var/lib/manatee/data/$CORPUS ] && \
+                   [ -n "$(ls -A /var/lib/manatee/data/$CORPUS 2>/dev/null)" ]; then
+                  echo "Corpus '$CORPUS' already present on PVC, skipping."
+                  continue
+                fi
+                mkdir -p /var/lib/manatee/data/$CORPUS
+                echo "Downloading corpus '$CORPUS' from LUMI-O..."
+                rclone copy \
+                  --s3-provider Ceph \
+                  --s3-endpoint https://lumidata.eu \
+                  :s3:turkunlp-noske-corpora/$CORPUS/ \
+                  /var/lib/manatee/data/$CORPUS/ \
+                  --progress
+                echo "Corpus '$CORPUS' downloaded."
+              done
+          volumeMounts:
+            - name: corpus-data
+              mountPath: /var/lib/manatee/data
+            - name: registry-config
+              mountPath: /var/lib/manatee/registry
+
+      containers:
+        - name: noske
+          image: ghcr.io/tuomaslundberg/noske-okd:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CORPLIST
+              value: "hplt_toy"
+            - name: BROWSER_URL_BONITO
+              value: "https://noske-PROD_NAMESPACE.apps.lumi-k.eu"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "4"
+              memory: "12Gi"
+          volumeMounts:
+            - name: corpus-data
+              mountPath: /var/lib/manatee/data
+            - name: registry-config
+              mountPath: /var/lib/manatee/registry
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+      volumes:
+        - name: corpus-data
+          persistentVolumeClaim:
+            claimName: noske-corpus
+        - name: registry-config
+          configMap:
+            name: noske-registry

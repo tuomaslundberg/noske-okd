@@ -57,9 +57,9 @@ Deploying **NoSketchEngine** (a corpus query web interface) on **LUMI-K** as a *
 
 ---
 
-## Session 3 progress (2026-05-22) — code complete; pending execution
+## Session 3 progress (2026-06-03) — complete ✅
 
-**All code written; awaiting Track A (LUMI-O bucket setup) before applying.**
+**Fully deployed and live.**
 
 **New files:**
 - `scripts/to_vert.py` — converts HPLT v3 JSONL to manatee vertical (whitespace tokenization; doc metadata: id, lang, url)
@@ -80,9 +80,47 @@ docker build --platform linux/amd64 -t ghcr.io/tuomaslundberg/noske-okd:latest -
 docker push ghcr.io/tuomaslundberg/noske-okd:latest
 ```
 
+**Infrastructure notes from session 3:**
+- `singularity` is at `/usr/bin/singularity` on LUMI-C; no module load needed (`apptainer` not available)
+- `oc` installed to `~/.local/bin/` on LUMI-C; manifests applied from LUMI directly
+- LUMI-O bucket `turkunlp-noske-corpora` created and populated
+- LUMI-O keys valid until 2027-05-25; stored in `manifests/00-secret.yaml` (gitignored)
+
 ---
 
-## Next session plan — corpus loading
+## Sprint: Prod preparation (pre-vacation)
+
+**Goal:** Get prod namespace live with `hplt_toy` — same corpus as dev, full smoke test. Corpus decisions happen after vacation; this sprint proves the prod path works cleanly before that meeting.
+
+**Prerequisites — all met:**
+- ✅ New LUMI project `462001491` allocated (lifetime to 2027-05-28)
+- ✅ `manifests/prod/` written with `PROD_NAMESPACE` placeholders
+- ✅ Docker image rebuilt with rclone, pushed to GHCR
+
+### Steps
+1. Create prod namespace on LUMI-K console: name TBD, set `lumi_project: 462001491` in description field
+2. `sed -i 's/PROD_NAMESPACE/<actual-ns>/g' manifests/prod/*.yaml`
+3. Create `manifests/prod/00-secret.yaml` from `manifests/00-secret.yaml` — update namespace only
+4. `oc apply -f manifests/prod/` (alphabetical order handles dependencies)
+5. Verify prod with Chrome extension — use `docs/verify-prompt.md` (swap URL to prod)
+6. Verify dev with same prompt — confirm dev still healthy
+
+---
+
+## Sprint: Prod deployment with real corpora (post-vacation)
+
+**Gate:** Corpus selection meeting with Erik and Veronika.
+
+### Steps per corpus
+1. `scripts/compile_and_upload.sh` — generates vertical, compiles via Singularity, uploads to LUMI-O
+2. Add registry entry to `manifests/prod/02-configmap.yaml`; add corpus name to `CORPLIST`
+3. `oc apply -f manifests/prod/02-configmap.yaml manifests/prod/03-deployment.yaml`
+4. `oc rollout restart deployment/noske -n <prod-ns>`
+5. Verify with Chrome extension
+
+---
+
+## Previous session plan — corpus loading (completed Session 3)
 
 Three interlocking pieces; bucket creation unblocks the other two.
 

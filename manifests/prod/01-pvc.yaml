@@ -1,0 +1,16 @@
+# PVC — production corpus data storage
+# BEFORE APPLYING: replace PROD_NAMESPACE below.
+# 50 GiB for real corpora (within LimitRange cap of 100 GiB).
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: noske-corpus
+  namespace: PROD_NAMESPACE
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: rook-ceph-fs
+  resources:
+    requests:
+      storage: 50Gi
