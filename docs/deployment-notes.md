@@ -46,6 +46,8 @@ Deploying **NoSketchEngine** (a corpus query web interface) on **LUMI-K** as a *
 
 **Live URL:** `https://noske-turkunlp-noske-dev.apps.lumi-k.eu`
 
+**Dev verification (2026-06-03):** 6/6 checks pass — see `docs/verify-prompt-result.md`. Corpus: 4.1M words, real Finnish text. Concordance, wordlist, and structural attribute filtering (`lang="fin_Latn"`) all functional. ~59% of docs are fin_Latn (expected; HPLT shard is multilingual).
+
 **Issues resolved during Session 2:**
 - `runAsUser: 1001` rejected — namespace UID range is `[1001230000, 1001239999]`; fix: remove `runAsUser`, keep `runAsNonRoot: true` only
 - CPU limit:request ratio cap of 5× — raised request from 500m to 1 CPU
