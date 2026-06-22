@@ -1,14 +1,14 @@
 # Deployment — production NSE pod spec
 #
 # BEFORE APPLYING:
-#   1. Replace every occurrence of PROD_NAMESPACE in this file
+#   1. Replace every occurrence of turkunlp-noske-prod in this file
 #   2. Create manifests/prod/00-secret.yaml with LUMI-O credentials (gitignored)
 #   3. Confirm BROWSER_URL_BONITO matches the actual route hostname:
-#        oc get route noske -n PROD_NAMESPACE -o jsonpath='{.spec.host}'
+#        oc get route noske -n turkunlp-noske-prod -o jsonpath='{.spec.host}'
 #   4. Update CORPLIST (both containers) and ConfigMap after corpus decisions
 #
 # Differences from dev:
-#   - Namespace: PROD_NAMESPACE
+#   - Namespace: turkunlp-noske-prod
 #   - Init container loops over CORPLIST — handles multiple corpora cleanly
 #   - Memory request/limit raised for production load
 
@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: noske
-  namespace: PROD_NAMESPACE
+  namespace: turkunlp-noske-prod
 spec:
   replicas: 1
   selector:
@@ -92,7 +92,7 @@ spec:
             - name: CORPLIST
               value: "hplt_toy"
             - name: BROWSER_URL_BONITO
-              value: "https://noske-PROD_NAMESPACE.apps.lumi-k.eu"
+              value: "https://noske-turkunlp-noske-prod.apps.lumi-k.eu"
           resources:
             requests:
               cpu: "1"

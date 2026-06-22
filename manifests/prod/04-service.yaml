@@ -1,11 +1,11 @@
 # Service — stable cluster-internal endpoint for the NSE pod
-# BEFORE APPLYING: replace PROD_NAMESPACE below.
+# BEFORE APPLYING: replace turkunlp-noske-prod below.
 
 apiVersion: v1
 kind: Service
 metadata:
   name: noske
-  namespace: PROD_NAMESPACE
+  namespace: turkunlp-noske-prod
 spec:
   selector:
     app: noske

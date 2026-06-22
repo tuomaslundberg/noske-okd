@@ -1,13 +1,13 @@
 # Route — OKD ingress with automatic TLS
-# BEFORE APPLYING: replace PROD_NAMESPACE below.
-# Auto-assigned hostname: noske-PROD_NAMESPACE.apps.lumi-k.eu
-# Verify with: oc get route noske -n PROD_NAMESPACE -o jsonpath='{.spec.host}'
+# BEFORE APPLYING: replace turkunlp-noske-prod below.
+# Auto-assigned hostname: noske-turkunlp-noske-prod.apps.lumi-k.eu
+# Verify with: oc get route noske -n turkunlp-noske-prod -o jsonpath='{.spec.host}'
 
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: noske
-  namespace: PROD_NAMESPACE
+  namespace: turkunlp-noske-prod
 spec:
   to:
     kind: Service

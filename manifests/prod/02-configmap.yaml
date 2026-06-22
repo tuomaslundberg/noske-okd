@@ -1,5 +1,5 @@
 # ConfigMap — manatee registry for production corpora
-# BEFORE APPLYING: replace PROD_NAMESPACE below.
+# BEFORE APPLYING: replace turkunlp-noske-prod below.
 # Add registry entries here as corpora are decided (post Veronika/Erik meeting).
 # Source of truth for each registry: registry/<corpname> in the project repo.
 
@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: noske-registry
-  namespace: PROD_NAMESPACE
+  namespace: turkunlp-noske-prod
 data:
   hplt_toy: |
     NAME "HPLT Toy"

@@ -90,22 +90,20 @@ docker push ghcr.io/tuomaslundberg/noske-okd:latest
 
 ---
 
-## Sprint: Production deployment (pre-vacation)
+## Session 4 (2026-06-23) — complete ✅
 
-**Goal:** Get prod namespace live with `hplt_toy` as a placeholder corpus — full smoke test of the production infrastructure. Corpus decisions happen after vacation; this sprint validates the prod path before that meeting.
+**Production deployment live.**
 
-**Prerequisites — all met:**
-- ✅ New LUMI project `462001491` allocated (lifetime to 2027-05-28)
-- ✅ `manifests/prod/` written with `PROD_NAMESPACE` placeholders
-- ✅ Docker image rebuilt with rclone, pushed to GHCR
+- **Prod namespace:** `turkunlp-noske-prod` (LUMI project 462001491, lifetime to 2027-05-28)
+- **Prod URL:** `https://noske-turkunlp-noske-prod.apps.lumi-k.eu`
+- **Corpus:** `hplt_toy` (placeholder; real corpora load post-vacation)
+- **LUMI-O:** new bucket `turkunlp-noske-corpora` under project 462001491; `hplt_toy` copied from 462000999 bucket
+- **Verification:** 6/6 checks pass
 
-### Steps
-1. Create prod namespace on LUMI-K console: name TBD, set `lumi_project: 462001491` in description field
-2. `sed -i 's/PROD_NAMESPACE/<actual-ns>/g' manifests/prod/*.yaml`
-3. Create `manifests/prod/00-secret.yaml` from `manifests/00-secret.yaml` — update namespace only
-4. `oc apply -f manifests/prod/` (alphabetical order handles dependencies)
-5. Verify prod with Chrome extension — use `docs/verify-prompt.md` (swap URL to prod)
-6. Verify dev with same prompt — confirm dev still healthy
+**Infrastructure notes:**
+- `oc new-project` with `--description` flag handles admission webhook — no web console needed
+- Prod secret (`manifests/prod/00-secret.yaml`) is gitignored; namespace field must match prod namespace (gotcha: copying from dev template leaves `turkunlp-noske-dev` — fix before applying)
+- LUMI-O keys for 462001491 generated at my.csc.fi; configured via `module load lumio && lumio-conf`
 
 ---
 
