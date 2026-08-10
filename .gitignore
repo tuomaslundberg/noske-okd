@@ -1,5 +1,8 @@
-# Secret manifest — contains LUMI-O credentials; never commit
+# Secret manifests — contain LUMI-O credentials; never commit.
+# The bare path below only covered the top-level (dev) copy; manifests/prod/00-secret.yaml
+# was untracked-but-NOT-ignored in this public repo until 2026-08-10. Keep the glob.
 manifests/00-secret.yaml
+manifests/**/00-secret.yaml
 
 # Generated artifacts — not source
 compiled/
